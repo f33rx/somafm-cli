@@ -28,7 +28,10 @@ jobs:
           elif [[ "${{ runner.os }}" == "macOS" ]]; then
             brew install mpv
           elif [[ "${{ runner.os }}" == "Windows" ]]; then
-            choco install mpv -y
+            powershell -c "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force"
+            powershell -c "irm get.scoop.sh -outfile 'install.ps1'"
+            powershell -c ".\install.ps1 -RunAsAdmin"
+            scoop install mpv
           fi
 
       - name: Run ${{ matrix.test-type }} tests
