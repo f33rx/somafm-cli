@@ -4,7 +4,7 @@
 [![branching](http://img.shields.io/badge/branching-github%20flow-blue.svg)](https://guides.github.com/introduction/flow/)
 [![license](http://img.shields.io/badge/license-mit-blue.svg)](https://opensource.org/licenses/MIT)
 [![gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg)](https://gitter.im/rockymadden/somafm-cli)
-[![circleci](https://circleci.com/gh/rockymadden/somafm-cli.svg?style=shield)](https://circleci.com/gh/rockymadden/somafm-cli)
+[![CI](https://github.com/rockymadden/somafm-cli/workflows/Test/badge.svg)](https://github.com/rockymadden/somafm-cli/actions)
 
 ```console
 $ somafm listen groovesalad
@@ -14,6 +14,11 @@ $ somafm listen groovesalad
 ```
 
 ## Install
+### Via mise:
+```console
+$ mise use -g somafm-cli@latest
+```
+
 ### Via Homebrew:
 ```console
 $ brew tap rockymadden/rockymadden
@@ -24,10 +29,17 @@ $ brew install rockymadden/rockymadden/somafm-cli
 ```console
 $ git clone git@github.com:rockymadden/somafm-cli.git
 $ cd somafm-cli
-$ make
-$ make install
+$ make install bindir=~/bin
 ```
-> __NOTE:__ Both `jq` and `mpv` are dependencies and without Homebrew you must ensure they are satisfied.
+
+You can customize the installation directory:
+```console
+$ make install bindir=/usr/local/bin logdir=/var/log
+```
+
+Run `make` or `make help` to see all available targets and options.
+
+> __NOTE:__ Both `jq` and `mpv` are dependencies. With mise or Homebrew these are installed automatically. When compiling from source, you must ensure they are satisfied.
 
 ## Use
 ```console
