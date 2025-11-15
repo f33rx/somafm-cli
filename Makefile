@@ -22,6 +22,25 @@ help: ## Show this help message
 
 clean: | uninstall ## Remove build artifacts and uninstall
 
+deps: ## Install runtime dependencies (jq, bats, mpv)
+ifeq (${uname}, Darwin)
+	@command -v brew >/dev/null 2>&1 || { echo "Error: Homebrew is required but not installed. Visit https://brew.sh"; exit 1; }
+	@command -v jq >/dev/null 2>&1 || brew install jq
+	@command -v bats >/dev/null 2>&1 || brew install bats-core
+	@command -v mpv >/dev/null 2>&1 || brew install mpv
+	@echo "Dependencies installed successfully"
+else ifeq (${uname}, Linux)
+	@command -v apt-get >/dev/null 2>&1 && { \
+		command -v jq >/dev/null 2>&1 || sudo apt-get install -y jq; \
+		command -v bats >/dev/null 2>&1 || sudo apt-get install -y bats; \
+		command -v mpv >/dev/null 2>&1 || sudo apt-get install -y mpv; \
+		echo "Dependencies installed successfully"; \
+	} || { echo "Error: Only apt-get package manager is supported on Linux"; exit 1; }
+else
+	@echo "Error: Unsupported operating system. Please install jq, bats, and mpv manually."
+	@exit 1
+endif
+
 install: | stub ## Install somafm to bindir
 	@rsync -a src/ ${bindir}/
 ifeq (${uname}, Darwin)

@@ -29,6 +29,7 @@ $ brew install rockymadden/rockymadden/somafm-cli
 ```console
 $ git clone git@github.com:rockymadden/somafm-cli.git
 $ cd somafm-cli
+$ make deps  # Install dependencies (jq, bats, mpv)
 $ make install bindir=~/bin
 ```
 
@@ -39,7 +40,7 @@ $ make install bindir=/usr/local/bin logdir=/var/log
 
 Run `make` or `make help` to see all available targets and options.
 
-> __NOTE:__ Both `jq` and `mpv` are dependencies. With mise or Homebrew these are installed automatically. When compiling from source, you must ensure they are satisfied.
+> __NOTE:__ Both `jq` and `mpv` are dependencies. With mise or Homebrew these are installed automatically. When compiling from source, use `make deps` to install them, or ensure they are satisfied manually.
 
 ## Use
 ```console
