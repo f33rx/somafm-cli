@@ -1,0 +1,6 @@
+[tools]
+bats = "latest"
+actionlint = "latest"
+
+[tasks.actionlint]
+run = "actionlint"
