@@ -1,15 +1,32 @@
-.DEFAULT_GOAL := stub
+# Usage: make [target] [bindir=PATH] [logdir=PATH]
+#
+# Variables:
+#   bindir    Installation directory (default: ./build/bin)
+#   logdir    Log directory (default: ./build/var/log)
+#
+# Examples:
+#   make install bindir=~/bin
+#   make install bindir=/usr/local/bin logdir=/var/log
+
+.DEFAULT_GOAL := help
 bindir ?= ./build/bin
 logdir ?= ./build/var/log
 uname := $(shell uname -s)
 
-clean: | uninstall
+.PHONY: help
+help: ## Show this help message
+	@sed -n 's/^# //p' $(MAKEFILE_LIST)
+	@echo ''
+	@echo 'Targets:'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
 
-install: | stub
+clean: | uninstall ## Remove build artifacts and uninstall
+
+install: | stub ## Install somafm to bindir
 	@rsync -a src/ ${bindir}/
 ifeq (${uname}, Darwin)
-	@$(eval _bindir := $(shell greadlink -f ${bindir}))
-	@$(eval _logdir := $(shell greadlink -f ${logdir}))
+	@$(eval _bindir := $(shell cd ${bindir} && pwd))
+	@$(eval _logdir := $(shell cd ${logdir} && pwd))
 	@sed -i ''  "s|bindir=|bindir=${_bindir}|g" ${bindir}/somafm
 	@sed -i ''  "s|logdir=|logdir=${_logdir}|g" ${bindir}/somafm
 else ifeq (${uname}, Linux)
@@ -19,20 +36,20 @@ else ifeq (${uname}, Linux)
 	@sed -i "s|logdir=|logdir=${_logdir}|g" ${bindir}/somafm
 endif
 
-stub:
+stub: ## Create build directories
 	@mkdir -p ${bindir}
 	@mkdir -p ${logdir}
 
-test: | test-unit test-integration
+test: | test-unit test-integration ## Run all tests
 
-test-integration: | install
+test-integration: | install ## Run integration tests
 	@bats test/integration
 
-test-unit: | install
+test-unit: | install ## Run unit tests
 	@bats test/unit
 
-uninstall:
+uninstall: ## Remove installed files and directories
 	@rm -rf ${bindir}
 	@rm -rf ${logdir}
 
-.PHONY: clean install stub test test-integration test-unit uninstall
+.PHONY: clean help install stub test test-integration test-unit uninstall
