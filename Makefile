@@ -42,7 +42,7 @@ else
 endif
 
 install: | stub ## Install somafm to bindir
-	@rsync -a src/ ${bindir}/
+	@cp -r src/* ${bindir}/
 ifeq (${uname}, Darwin)
 	@$(eval _bindir := $(shell cd ${bindir} && pwd))
 	@$(eval _logdir := $(shell cd ${logdir} && pwd))
@@ -51,6 +51,11 @@ ifeq (${uname}, Darwin)
 else ifeq (${uname}, Linux)
 	@$(eval _bindir := $(shell readlink -f ${bindir}))
 	@$(eval _logdir := $(shell readlink -f ${logdir}))
+	@sed -i "s|bindir=|bindir=${_bindir}|g" ${bindir}/somafm
+	@sed -i "s|logdir=|logdir=${_logdir}|g" ${bindir}/somafm
+else
+	@$(eval _bindir := $(shell cd ${bindir} && pwd))
+	@$(eval _logdir := $(shell cd ${logdir} && pwd))
 	@sed -i "s|bindir=|bindir=${_bindir}|g" ${bindir}/somafm
 	@sed -i "s|logdir=|logdir=${_logdir}|g" ${bindir}/somafm
 endif
