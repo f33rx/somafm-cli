@@ -2,7 +2,6 @@
 bats = "latest"
 actionlint = "latest"
 jq = "latest"
-mpv = "latest"
 
 [tasks.actionlint]
 run = "actionlint"
