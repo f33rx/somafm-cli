@@ -11,6 +11,7 @@ while (( "$#" )); do
   case "${1}" in
     --channel=*) channel=${1/--channel=/''}; shift ;;
     --quality=*) quality=${1/--quality=/''}; shift ;;
+    --kirby) kirby_flag=1; shift ;;
     -c*) channel=${2}; shift; shift ;;
     -q*) quality=${2}; shift; shift ;;
     *)
@@ -37,13 +38,38 @@ esac
 
 ## Command functions ##############################################################################
 function channels() {
-  local channels=$(curl -s -H 'Accept: application/json' https://somafm.com/channels.json | \
-    jq -r '.channels | sort_by(.listeners | tonumber) | reverse | .[]' | \
-    jq -r '.id + " | " + .listeners + " listeners | " + .description')
+  local data=$(curl -s -H 'Accept: application/json' https://somafm.com/channels.json | \
+    jq -r '.channels | sort_by(.listeners | tonumber) | reverse | .[] | [.id, .listeners, .description] | @tsv')
 
-  case "${channels}" in
+  case "${data}" in
     '') return 1 ;;
-    *) echo "${channels}" ;;
+    *)
+      local term_width=$(tput cols 2>/dev/null || echo 80)
+      local channel_width=20
+      local listeners_width=12
+      local padding=4
+      local desc_width=$((term_width - channel_width - listeners_width - padding))
+
+      test ${desc_width} -lt 20 && desc_width=20
+
+      printf "%-20s %-12s %s\n" "CHANNEL" "LISTENERS" "DESCRIPTION"
+      printf "%-20s %-12s %s\n" "--------------------" "------------" "$(printf '%*s' ${desc_width} '' | tr ' ' '-')"
+
+      echo "${data}" | while IFS=$'\t' read -r id listeners description; do
+        local indent="$(printf '%-20s %-12s ' '' '')"
+        local wrapped=$(echo "${description}" | fold -s -w ${desc_width})
+        local first_line=true
+
+        while IFS= read -r line; do
+          if ${first_line}; then
+            printf "%-20s %-12s %s\n" "${id}" "${listeners}" "${line}"
+            first_line=false
+          else
+            printf "%s%s\n" "${indent}" "${line}"
+          fi
+        done <<< "${wrapped}"
+      done
+    ;;
   esac
 }
 
@@ -51,27 +77,83 @@ function help() {
   local a=(${0//\// })
   local bin=${a[${#a[@]}-1]}
 
-  echo 'Usage:'
-  echo "  ${bin} channels"
-  echo "  ${bin} listen <channel> [--quality=<low|high|highest>]"
+  echo "Usage: ${bin} <command> [options]"
   echo
-  echo 'Options:'
-  echo '  quality    The listening quality (default: high)'
+  echo "Commands:"
+  printf "  %-20s %s\n" "channels" "List all available channels with listener counts"
+  printf "  %-20s %s\n" "list, ls" "Alias for channels"
+  printf "  %-20s %s\n" "listen <channel>" "Listen to a specific channel"
+  printf "  %-20s %s\n" "play <channel>" "Alias for listen"
   echo
-  echo 'Commands:'
-  echo '  channels|list|ls    List channels'
-  echo '  listen|play         Listen to channel'
+  echo "Options:"
+  printf "  %-20s %s\n" "-q, --quality=VALUE" "Stream quality: low, high, highest (default: high)"
+  printf "  %-20s %s\n" "-c, --channel=NAME" "Channel name (alternative syntax)"
+  printf "  %-20s %s\n" "-h, --help" "Show this help message"
+  printf "  %-20s %s\n" "-v, --version" "Show version information"
+  echo
+  echo "Examples:"
+  printf "  %-20s %s\n" "${bin} channels" "List all available channels"
+  printf "  %-20s %s\n" "${bin} play groovesalad" "Play Groove Salad with default quality"
+  printf "  %-20s %s\n" "${bin} listen defcon -q highest" "Play DEF CON Radio at highest quality"
+  printf "  %-20s %s\n" "${bin} play poptron --quality=low" "Play PopTron at low quality"
 }
 
 function listen() {
+  if ! command -v mpv >/dev/null 2>&1; then
+    echo "Error: mpv not found. Install with 'make deps' or your package manager."
+    return 1
+  fi
+
   local playlist=$(curl -s -H 'Accept: application/json' https://somafm.com/channels.json | \
     jq -r ".channels | map(select(.id == \"${channel}\")) | .[]" | \
     jq -r ".playlists | map(select(.quality == \"${quality}\")) | limit(1;.[]) | .url")
 
   case "${playlist}" in
     '') return 1 ;;
-    *) mpv --no-config "${playlist}" 2> /dev/null | awk '/title/ { s = ""; for (i = 2; i <= NF; i++) s = s $i " "; cmd="(date +'%H:%M:%S')"; cmd | getline d; print d,"|",s; close(cmd) }' ;;
+    *)
+      if [[ "${kirby_flag}" == "1" ]]; then
+        mpv --no-config "${playlist}" 2> /dev/null | awk '
+          /title/ {
+            s = "";
+            for (i = 2; i <= NF; i++) s = s $i " ";
+            cmd = "(date +\"%H:%M:%S\")";
+            cmd | getline d;
+            close(cmd);
+
+            frames[0] = "<(^.^<)";
+            frames[1] = "<(^.^)>";
+            frames[2] = "(>^.^)>";
+            frames[3] = "(>^.^<)";
+            frames[4] = "<(^.^<)";
+
+            line_text = d " | " s;
+
+            for (i = 0; i < 200; i++) {
+              printf "\r\033[K%s %s", line_text, frames[i % 5];
+              fflush();
+              system("sleep 0.15");
+            }
+            printf "\n";
+          }'
+      else
+        mpv --no-config "${playlist}" 2> /dev/null | awk '/title/ { s = ""; for (i = 2; i <= NF; i++) s = s $i " "; cmd="(date +'%H:%M:%S')"; cmd | getline d; print d,"|",s; close(cmd) }'
+      fi
+    ;;
   esac
+}
+
+function kirby() {
+  local frames=('<(^.^<)' '<(^.^)>' '(>^.^)>' '(>^.^<)' '<(^.^<)')
+  local delay=0.15
+
+  trap 'printf "\r\033[K<(^.^)>\n"; exit 0' INT
+
+  while true; do
+    for frame in "${frames[@]}"; do
+      printf "\r\033[K%s" "${frame}"
+      sleep ${delay}
+    done
+  done
 }
 
 function version() {
@@ -82,6 +164,7 @@ function version() {
 case "${cmd}" in
   --help|-h) help; exit 0 ;;
   --version|-v) version; exit 0 ;;
+  --kirby) kirby; exit 0 ;;
   channels|list|ls) channels; exit "$?" ;;
   listen|play) listen; exit "$?" ;;
   *) help; exit 1 ;;
