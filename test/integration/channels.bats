@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-load ../bats
+source "${BATS_TEST_DIRNAME}/../bats.bash"
 
 @test 'channels should output more than one channel and exit 0' {
   run build/bin/somafm channels
