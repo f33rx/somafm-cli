@@ -31,7 +31,8 @@ jobs:
             powershell -c "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force"
             powershell -c "irm get.scoop.sh -outfile 'install.ps1'"
             powershell -c ".\install.ps1 -RunAsAdmin"
-            scoop install mpv
+            "$USERPROFILE/scoop/shims/scoop" install mpv
+            echo "$USERPROFILE\scoop\shims" >> "$GITHUB_PATH"
           fi
 
       - name: Run ${{ matrix.test-type }} tests

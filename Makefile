@@ -22,7 +22,7 @@ help: ## Show this help message
 
 clean: | uninstall ## Remove build artifacts and uninstall
 
-deps: ## Install runtime dependencies (jq, gawk, mpv)
+deps: ## Install runtime dependencies (jq, gawk, mpv, cava)
 	@command -v npm >/dev/null 2>&1 || { echo "Error: npm is required but not installed."; exit 1; }
 	@command -v bats >/dev/null 2>&1 || npm install -g bats
 ifeq (${uname}, Darwin)
@@ -30,23 +30,27 @@ ifeq (${uname}, Darwin)
 	@command -v jq >/dev/null 2>&1 || brew install jq
 	@command -v gawk >/dev/null 2>&1 || brew install gawk
 	@command -v mpv >/dev/null 2>&1 || brew install mpv
+	@command -v cava >/dev/null 2>&1 || brew install cava
 	@echo "Dependencies installed successfully"
 else ifeq (${uname}, Linux)
 	@if command -v apt-get >/dev/null 2>&1; then \
 		command -v jq >/dev/null 2>&1 || sudo apt-get install -y jq; \
 		command -v gawk >/dev/null 2>&1 || sudo apt-get install -y gawk; \
 		command -v mpv >/dev/null 2>&1 || sudo apt-get install -y mpv; \
+		command -v cava >/dev/null 2>&1 || sudo apt-get install -y cava; \
 	elif command -v dnf >/dev/null 2>&1; then \
 		command -v jq >/dev/null 2>&1 || sudo dnf install -y jq; \
 		command -v gawk >/dev/null 2>&1 || sudo dnf install -y gawk; \
 		command -v mpv >/dev/null 2>&1 || sudo dnf install -y mpv; \
+		command -v cava >/dev/null 2>&1 || sudo dnf install -y cava; \
 	elif command -v pacman >/dev/null 2>&1; then \
 		command -v jq >/dev/null 2>&1 || sudo pacman -S --noconfirm jq; \
 		command -v gawk >/dev/null 2>&1 || sudo pacman -S --noconfirm gawk; \
 		command -v mpv >/dev/null 2>&1 || sudo pacman -S --noconfirm mpv; \
+		command -v cava >/dev/null 2>&1 || sudo pacman -S --noconfirm cava; \
 	else \
 		echo "Error: No supported package manager found (apt-get, dnf, or pacman)"; \
-		echo "Please install manually: jq, gawk, mpv"; \
+		echo "Please install manually: jq, gawk, mpv, cava"; \
 		exit 1; \
 	fi
 	@echo "Dependencies installed successfully"

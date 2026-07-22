@@ -12,7 +12,7 @@ while (( "$#" )); do
     --channel=*) channel=${1/--channel=/''}; shift ;;
     --quality=*) quality=${1/--quality=/''}; shift ;;
     --kirby) kirby_flag=1; shift ;;
-    --visualizer|--vizualizer) visualizer_flag=1; shift ;;
+    --visualizer) visualizer_flag=1; shift ;;
     -c*) channel=${2}; shift; shift ;;
     -q*) quality=${2}; shift; shift ;;
     *)
@@ -89,7 +89,7 @@ function help() {
   echo "Options:"
   printf "  %-20s %s\n" "-q, --quality=VALUE" "Stream quality: low, high, highest (default: high)"
   printf "  %-20s %s\n" "-c, --channel=NAME" "Channel name (alternative syntax)"
-  printf "  %-20s %s\n" "--visualizer" "Full-screen audio visualizer (requires cava: brew install cava)"
+  printf "  %-20s %s\n" "--visualizer" "Full-screen audio visualizer (requires cava)"
   printf "  %-20s %s\n" "-h, --help" "Show this help message"
   printf "  %-20s %s\n" "-v, --version" "Show version information"
   echo
@@ -115,13 +115,26 @@ function listen() {
     *)
       if [[ "${visualizer_flag}" == "1" ]]; then
         if ! command -v cava >/dev/null 2>&1; then
-          echo "Error: cava not found. Install with: brew install cava"
+          case "$(uname -s)" in
+            Darwin) echo "Error: cava not found. Install with: brew install cava" ;;
+            Linux) echo "Error: cava not found. Install cava with your package manager." ;;
+            *) echo "Error: cava not found. Install cava." ;;
+          esac
           return 1
         fi
-        local cava_conf cava_fifo mpv_pid pcm_pid
-        cava_conf="/tmp/somafm-cava-$$.conf"
-        cava_fifo="/tmp/somafm-cava-$$.fifo"
-        mkfifo "${cava_fifo}"
+        local cava_tmpdir cava_conf cava_fifo mpv_pid pcm_pid
+        cava_tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/somafm-cava.XXXXXX")
+        if [[ -z "${cava_tmpdir}" || ! -d "${cava_tmpdir}" ]]; then
+          echo "Error: failed to create temporary directory."
+          return 1
+        fi
+        cava_conf="${cava_tmpdir}/cava.conf"
+        cava_fifo="${cava_tmpdir}/cava.fifo"
+        if ! mkfifo "${cava_fifo}"; then
+          echo "Error: failed to create fifo."
+          rm -rf "${cava_tmpdir}"
+          return 1
+        fi
         cat > "${cava_conf}" << CAVAEOF
 [input]
 method = fifo
@@ -151,13 +164,13 @@ CAVAEOF
           --ao=pcm --ao-pcm-waveheader=no --ao-pcm-file="${cava_fifo}" \
           "${playlist}" >/dev/null 2>&1 &
         pcm_pid=$!
-        trap 'kill "${mpv_pid}" "${pcm_pid}" 2>/dev/null; wait "${mpv_pid}" "${pcm_pid}" 2>/dev/null; rm -f "${cava_conf}" "${cava_fifo}"' INT TERM EXIT
+        trap 'exec 9>&-; kill "${mpv_pid}" "${pcm_pid}" 2>/dev/null; wait "${mpv_pid}" "${pcm_pid}" 2>/dev/null; rm -rf "${cava_tmpdir}"' INT TERM EXIT
         cava -p "${cava_conf}"
         trap - INT TERM EXIT
         exec 9>&-
         kill "${mpv_pid}" "${pcm_pid}" 2>/dev/null
         wait "${mpv_pid}" "${pcm_pid}" 2>/dev/null
-        rm -f "${cava_conf}" "${cava_fifo}"
+        rm -rf "${cava_tmpdir}"
       elif [[ "${kirby_flag}" == "1" ]]; then
         mpv --no-config "${playlist}" 2> /dev/null | awk '
           /title/ {
